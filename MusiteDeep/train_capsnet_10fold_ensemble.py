@@ -1,6 +1,6 @@
 import sys
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0";
+#os.environ["CUDA_VISIBLE_DEVICES"]="0";
 import tensorflow as tf
 config=tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction=0.8
@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 import argparse
 from Bootstrapping_capsnet_callback import bootStrapping_allneg_continue_keras2
-from EXtractfragment_sort import extractFragforTraining
+from EXtractfragment_sort import extractFragforTraining, extractFragforTrainingFromTable
 import timeit
 from sklearn.model_selection import KFold, StratifiedKFold
 from scipy.special import softmax
@@ -22,6 +22,13 @@ def ensure_dir(file_path):
 
 def preprocess_data(inputfile,window,residues):
     allfrag=extractFragforTraining(inputfile,window,'-',focus=residues)
+    allfrag=allfrag.as_matrix()
+    kf = KFold(n_splits=10, shuffle=True, random_state=1234)
+    folds = kf.split(allfrag)
+    return allfrag,folds
+
+def preprocess_data_from_table(db, site_file,window,residues):
+    allfrag=extractFragforTrainingFromTable(db, site_file,window,'-',focus=residues)
     allfrag=allfrag.as_matrix()
     kf = KFold(n_splits=10, shuffle=True, random_state=1234)
     folds = kf.split(allfrag)
@@ -65,6 +72,9 @@ def calculate_avg_weights(inputweights,model_arch):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument('-input',  dest='inputfile', type=str, help='training data in fasta format. Sites followed by "#" are positive sites for a specific PTM prediction.', required=True)
+    parser.add_argument('-db', dest='database', type=str,
+                        help='Protein database file in fasta format',
+                        required=False)
     parser.add_argument('-output',  dest='outputfolder', type=str, help='folder for the output models (model and parameter files).', required=True)
     parser.add_argument('-residue-types',  dest='residues', type=str, help='Residue types that this model focus on. For multiple residues, seperate each with \',\'. \n\
     Note: all the residues specified by this parameter will be trained in one model.', required=True)
@@ -108,7 +118,11 @@ if __name__ == "__main__":
        output.write("%d\t%d\t%s\tgeneral\t%d\t%s\t%d" % (args.nclass,args.window,args.residues,codemode,model,nb_classes))
     
     start = timeit.default_timer()
-    allfrag,folds=preprocess_data(args.inputfile,args.window,residues)
+    db = args.database
+    if db is not None:
+        allfrag, folds = preprocess_data_from_table(db, args.inputfile, args.window, residues)
+    else:
+        allfrag,folds=preprocess_data(args.inputfile,args.window,residues)
     for i,(train_indices,val_indices) in enumerate(folds):
         for bt in range(args.nclass):
             checkpointoutput=args.checkpointweights+"weights_fold"+str(i)+"_nclass"+str(bt)
