@@ -209,3 +209,11 @@ def extractFragforMultipredict(fasta_file,windows=16,empty_aa="-",focus=("S","T"
     fasta_dict,positive_dict,idlist = read_fasta(fasta_file) #{id} seq  fasta_file="train_test_fasta" fasta_file="./cross-validation-protein/validation_proteins_0.fasta"
     frag,ids,poses,focus = get_frag(fasta_dict,positive_dict,idlist, windows, empty_aa,focus)
     return frag,ids,poses,focus,idlist
+
+
+def extractFragforMultipredictFromTable(fasta_file,site_file,windows=16,empty_aa="-",focus=("S","T","Y")):
+    #fasta_dict,positive_dict,idlist = read_fasta(fasta_file) #{id} seq  fasta_file="train_test_fasta" fasta_file="./cross-validation-protein/validation_proteins_0.fasta"
+    #frag,ids,poses,focus = get_frag(fasta_dict,positive_dict,idlist, windows, empty_aa,focus)
+    frag, ids, poses, focus = get_frag_from_table(fasta_file, site_file, windows, empty_aa, focus)
+    idlist=ids
+    return frag,ids,poses,focus,idlist

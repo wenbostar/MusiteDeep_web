@@ -10,7 +10,7 @@ import csv
 from DProcess import convertRawToXY
 from capsulenet_callback import Capsnet_main
 from multiCNN_callback import MultiCNN
-from EXtractfragment_sort import extractFragforMultipredict
+from EXtractfragment_sort import extractFragforMultipredict, extractFragforMultipredictFromTable
 
 def ensure_dir(file_path):
     directory = os.path.dirname(file_path)
@@ -125,6 +125,9 @@ class ProtIDResult(object):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description='MusiteDeep prediction tool for general, kinase-specific phosphorylation prediction or custom PTM prediction by using custom models.')
     parser.add_argument('-input',  dest='inputfile', type=str, help='Protein sequences to be predicted in FASTA format.', required=True)
+    parser.add_argument('-db', dest='database', type=str,
+                        help='Protein database file in fasta format',
+                        required=False)
     parser.add_argument('-output',  dest='output', type=str, help='prefix of the prediction results.', required=True)
     parser.add_argument('-model-prefix',  dest='modelprefix', type=str, help='prefix of custom model used for prediciton. If donnot have one, please run train_capsnet_10fold_ensemble.py and train_CNN_10fold_ensemble to train models for a particular PTM type.', required=False,default=None)
     args = parser.parse_args()
@@ -133,6 +136,9 @@ if __name__ == "__main__":
     websiteoutput = open(args.output+"_predicted_num.txt",'w') #generate this file at the beginning! 
     websiteoutput.write("Start:0\n")
     websiteoutput.close()
+
+    db = args.database
+
     if args.modelprefix is None:
        print("If you want to do prediction by a custom model, please specify the prefix for an existing custom model by -model-prefix!\n\
        It indicates two files [-model-prefix]_HDF5model and [-model-prefix]_parameters.\n \
@@ -169,7 +175,11 @@ if __name__ == "__main__":
         window=int(parameters.split("\t")[1])
         residues=parameters.split("\t")[2]
         residues=residues.split(",")
-        testfrag,ids,poses,focuses,idlist=extractFragforMultipredict(args.inputfile,window,'-',focus=residues)
+
+        if db is not None:
+            testfrag,ids,poses,focuses,idlist=extractFragforMultipredictFromTable(db, args.inputfile, window, '-',focus=residues)
+        else:
+            testfrag,ids,poses,focuses,idlist=extractFragforMultipredict(args.inputfile,window,'-',focus=residues)
         foldnum=10
         predictproba,y_true=batch_predict(testfrag,arch_cnn,arch_caps,model_cnn,model_caps,nclass,args.output,foldnum,num_ptms,ptmtype)           
         poses=poses+1;
