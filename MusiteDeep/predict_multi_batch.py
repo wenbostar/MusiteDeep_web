@@ -35,7 +35,7 @@ def evaluate(predict_proba,testY):
 
 def batch_predict(data,arch_cnn,arch_caps_caps,model_cnn,model_caps,nclass,outputfile,foldnum,num_ptms,ptmtype,nclass_init=None):
     predictproba=np.zeros((len(data),1))
-    batch_size=500
+    batch_size=500*10
     totalindex = int(np.ceil(float(len(data)/batch_size)))
     totalnum=totalindex*foldnum
     processed_num=0
@@ -122,6 +122,49 @@ class ProtIDResult(object):
             res_str+="\n"
         return res_str
 
+    def get_result(self):
+        res_str = ""
+        defaultcutoff = 0.5;
+        res_str = res_str + self.prot_id + "\n"
+        res_list = list()
+        for pos in sorted(self.scores_dic[self.prot_id].keys()):  # order by pos, it is the key for scores_dic[prot_id]
+            # res_str = res_str+"\""+self.prot_id+"\"\t"
+            res_str = res_str + str(pos) + "\t"
+            # res_str = res_str+str(','.join(self.residues_dic[self.prot_id][pos]))+"\t"
+            res_str = res_str + str(self.residues_dic[self.prot_id][pos]) + "\t"  # no need to add \"
+            # res_str = res_str+str(','.join([str(x) for x in self.scores_dic[self.prot_id][pos]]))+"\t"
+            # res_str = res_str+str(','.join(self.ptmtypes_dic[self.prot_id][pos]))+"\t"
+            tmp_str = self.prot_id + "\t" + str(pos) + "\t" + str(self.residues_dic[self.prot_id][pos])
+            ptms = []
+            pastptms = []
+            for index in range(len(self.scores_dic[self.prot_id][pos])):
+                if self.ptmtypes_dic[self.prot_id][pos][index] == 'Phosphoserine_Phosphothreonine':
+                    if self.residues_dic[self.prot_id][pos] == 'S':
+                        ptmln = "Phosphoserine:" + str(self.scores_dic[self.prot_id][pos][index])
+                    else:
+                        ptmln = "Phosphothreonine:" + str(self.scores_dic[self.prot_id][pos][index])
+                else:
+                    ptmln = self.ptmtypes_dic[self.prot_id][pos][index] + ":" + str(
+                        self.scores_dic[self.prot_id][pos][index])
+
+                ptms.append(ptmln)
+                if self.scores_dic[self.prot_id][pos][index] > defaultcutoff:
+                    pastptms.append(ptmln)
+
+                prob = self.scores_dic[self.prot_id][pos][index]
+                ptm_type = self.ptmtypes_dic[self.prot_id][pos][index]
+                res_list.append(tmp_str + "\t" + ptm_type + "\t" + str(prob))
+
+            res_str += ';'.join(ptms) + "\t"
+            if len(pastptms) > 0:
+                res_str += ';'.join(pastptms)
+            else:
+                res_str += "None"
+
+            res_str += "\n"
+        #return res_str
+        return "\n".join(res_list)
+
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description='MusiteDeep prediction tool for general, kinase-specific phosphorylation prediction or custom PTM prediction by using custom models.')
     parser.add_argument('-input',  dest='inputfile', type=str, help='Protein sequences to be predicted in FASTA format.', required=True)
@@ -178,9 +221,12 @@ if __name__ == "__main__":
 
         if db is not None:
             testfrag,ids,poses,focuses,idlist=extractFragforMultipredictFromTable(db, args.inputfile, window, '-',focus=residues)
+            import pickle
+            pickle.dump(testfrag,file=open("testfrag.pkl","wb"))
         else:
             testfrag,ids,poses,focuses,idlist=extractFragforMultipredict(args.inputfile,window,'-',focus=residues)
         foldnum=10
+        print(testfrag.shape)
         predictproba,y_true=batch_predict(testfrag,arch_cnn,arch_caps,model_cnn,model_caps,nclass,args.output,foldnum,num_ptms,ptmtype)           
         poses=poses+1;
         ptmindex+=1
@@ -200,11 +246,14 @@ if __name__ == "__main__":
       #write results to file
       target = open(args.output+"_results.txt", "w")
       #add a header
-      target.write("Position\tResidue\tPTMscores\tCutoff=0.5\n")
+      target.write("protein\tposition\taa\tptm_type\tprob\n")
       for prot_id in idlist: #must keep the order!
           if prot_id in prot_id_dic.keys(): #only print proteins in the result files. some protein do results dont print them!
-                v = str(prot_id_dic[prot_id])
-                target.write(v)
+                #v = str(prot_id_dic[prot_id])
+                v = prot_id_dic[prot_id].get_result()
+                target.write(v+"\n")
+          else:
+              print("no id:"+str(prot_id))
       
       target.close()
       websiteoutput = open(args.output+"_predicted_num.txt",'w')

@@ -129,12 +129,16 @@ def get_frag_from_table(db, site_file, nb_windows, empty_aa, focus):
     siteData = pd.read_table(site_file, sep="\t", header=0)
     for i, row in siteData.iterrows():
         proID = row['protein']
+        id = proID
         mod_aa = row['aa']
         mid_aa = mod_aa
         if "pos" in siteData.columns:
             pos = row['pos']
         else:
             pos = row['position']
+
+        # must be 0-based
+        pos = pos - 1
 
         y = row['y']
         seq = fasta_dict[proID]
@@ -192,6 +196,20 @@ def get_proteins(db: str):
 
     return records
 
+def get_pro_list(site_file):
+    siteData = pd.read_table(site_file, sep="\t", header=0)
+    idset = dict()
+    for i, row in siteData.iterrows():
+        proID = row['protein']
+        idset[proID] = 1
+
+    idlist = list()
+    for id in idset.keys():
+        idlist.append(id)
+
+    return idlist
+
+
 def extractFragforTrainingFromTable(fasta_file,site_file,windows=16,empty_aa="-",focus=("S","T","Y")):
     frag = get_frag_from_table(fasta_file, site_file, windows, empty_aa,focus)[0]
     return frag
@@ -215,5 +233,5 @@ def extractFragforMultipredictFromTable(fasta_file,site_file,windows=16,empty_aa
     #fasta_dict,positive_dict,idlist = read_fasta(fasta_file) #{id} seq  fasta_file="train_test_fasta" fasta_file="./cross-validation-protein/validation_proteins_0.fasta"
     #frag,ids,poses,focus = get_frag(fasta_dict,positive_dict,idlist, windows, empty_aa,focus)
     frag, ids, poses, focus = get_frag_from_table(fasta_file, site_file, windows, empty_aa, focus)
-    idlist=ids
+    idlist = get_pro_list(site_file)
     return frag,ids,poses,focus,idlist
