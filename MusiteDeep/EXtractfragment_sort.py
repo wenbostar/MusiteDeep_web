@@ -143,7 +143,8 @@ def get_frag_from_table(db, site_file, nb_windows, empty_aa, focus):
         if "y" in siteData.columns.values:
             y = row['y']
         else:
-            y = "-"
+            ## no use
+            y = 0
             
         seq = fasta_dict[proID]
 
