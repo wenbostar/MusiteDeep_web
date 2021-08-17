@@ -140,7 +140,11 @@ def get_frag_from_table(db, site_file, nb_windows, empty_aa, focus):
         # must be 0-based
         pos = pos - 1
 
-        y = row['y']
+        if "y" in siteData.columns.values:
+            y = row['y']
+        else:
+            y = "-"
+            
         seq = fasta_dict[proID]
 
         if not (mod_aa in focus):
